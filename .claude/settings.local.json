@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p app static data)",
+      "Bash(mv main.py app/)",
+      "Bash(mv models.py app/)",
+      "Bash(mv database.py app/)",
+      "Bash(mv doc.html static/)",
+      "WebSearch"
+    ]
+  }
+}

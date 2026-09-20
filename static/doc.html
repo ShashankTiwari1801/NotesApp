@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Notes API Documentation</title>
+    <style>
+        body { font-family: sans-serif; line-height: 1.6; max-width: 800px; margin: 40px auto; padding: 0 20px; color: #333; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #f4f4f4; }
+        code { background: #eee; padding: 2px 4px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>FastAPI Notes Server API - Full Documentation</h1>
+    <p style="color: red; font-weight: bold;">Note: All requests require the <code>X-API-Key</code> header to be set with a valid API key.</p>
+    <table>
+        <tr>
+            <th>Method</th>
+            <th>Endpoint</th>
+            <th>Description</th>
+        </tr>
+        <tr>
+            <td><strong>POST</strong></td>
+            <td><code>/notes</code></td>
+            <td>Create a new note</td>
+        </tr>
+        <tr>
+            <td><strong>GET</strong></td>
+            <td><code>/notes</code></td>
+            <td>Retrieve all notes</td>
+        </tr>
+        <tr>
+            <td><strong>GET</strong></td>
+            <td><code>/notes/{id}</code></td>
+            <td>Retrieve a specific note by ID</td>
+        </tr>
+        <tr>
+            <td><strong>PUT</strong></td>
+            <td><code>/notes/{id}</code></td>
+            <td>Update an existing note</td>
+        </tr>
+        <tr>
+            <td><strong>DELETE</strong></td>
+            <td><code>/notes/{id}</code></td>
+            <td>Delete a note by ID</td>
+        </tr>
+        <tr>
+            <td><strong>GET</strong></td>
+            <td><code>/notes/count</code></td>
+            <td>Get total number of notes</td>
+        </tr>
+        <tr>
+            <td><strong>GET</strong></td>
+            <td><code>/notes/by-tag/{tag}</code></td>
+            <td>Retrieve notes filtered by tag</td>
+        </tr>
+    </table>
+</body>
+</html>

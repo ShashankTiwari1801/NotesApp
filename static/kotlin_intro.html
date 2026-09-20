@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Kotlin for Android: Essential Quickstart</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; max-width: 900px; margin: 0 auto; padding: 20px; color: #333; }
+        h1, h2, h3 { color: #005A9C; }
+        .code-block { background: #f4f4f4; padding: 15px; border-left: 4px solid #005A9C; overflow-x: auto; font-family: 'Courier New', Courier, monospace; }
+        .practice { background: #e7f3fe; padding: 15px; border-radius: 5px; margin: 20px 0; border: 1px solid #b3d7ff; }
+        nav { background: #333; color: white; padding: 10px; border-radius: 5px; margin-bottom: 20px; }
+        nav a { color: white; margin-right: 15px; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="#basics">Basics</a>
+        <a href="#null-safety">Null Safety</a>
+        <a href="#android-features">Android Features</a>
+        <a href="#problems">Practice</a>
+    </nav>
+
+    <h1>Kotlin for Android: Essential Quickstart</h1>
+    <p>Kotlin is the official language for Android development. It is concise, safe, and interoperable with Java.</p>
+
+    <h2 id="basics">1. The Basics</h2>
+    <p>Use <code>val</code> for immutable (read-only) variables and <code>var</code> for mutable variables.</p>
+    <div class="code-block">
+// Variable declarations
+val name: String = "Android" // Cannot be changed
+var age: Int = 10            // Can be changed
+
+// Function
+fun greet(name: String): String {
+    return "Hello, $name!"
+}
+    </div>
+
+    <h2 id="null-safety">2. Null Safety</h2>
+    <p>Kotlin prevents <code>NullPointerException</code>. By default, types cannot be null.</p>
+    <div class="code-block">
+var nonNull: String = "Must have value"
+var nullable: String? = null // '?' allows null
+
+// Safe call
+val length = nullable?.length
+
+// Elvis operator
+val lengthOrDefault = nullable?.length ?: 0
+    </div>
+
+    <h2 id="android-features">3. Android-Specific Features</h2>
+
+    <h3>Data Classes</h3>
+    <p>Perfect for representing API responses or data entities.</p>
+    <div class="code-block">
+data class User(val id: Int, val name: String)
+val user = User(1, "Alice")
+    </div>
+
+    <h3>Coroutines</h3>
+    <p>Used for asynchronous programming (e.g., fetching network data without waiting on the main thread).</p>
+    <div class="code-block">
+scope.launch {
+    val data = fetchData() // Suspending function
+    updateUI(data)
+}
+    </div>
+
+    <h2 id="problems">4. Practice Problems</h2>
+
+    <div class="practice">
+        <h3>Problem 1: Variables</h3>
+        <p>Create a <code>val</code> representing a constant URL <code>"https://api.example.com"</code> and a <code>var</code> for an integer representing the current score starting at 0.</p>
+    </div>
+
+    <div class="practice">
+        <h3>Problem 2: Null Safety</h3>
+        <p>Given <code>var username: String? = null</code>, use the Elvis operator to set a variable <code>displayName</code> to the <code>username</code> if it is not null, or "Guest" if it is null.</p>
+    </div>
+
+    <div class="practice">
+        <h3>Problem 3: Data Classes</h3>
+        <p>Define a data class <code>Note</code> that has <code>title: String</code> and <code>content: String</code>. Create an instance of this note.</p>
+    </div>
+
+</body>
+</html>
