@@ -29,6 +29,10 @@ app = FastAPI(dependencies=[Depends(get_api_key)])
 def startup_event():
     database.init_db()
 
+@app.get("/api/v1/hello")
+def hello_world():
+    return {"message": "Hello, World!"}
+
 @app.post("/notes", response_model=Note)
 def add_note(note: NoteCreate):
     db = next(database.get_db())
