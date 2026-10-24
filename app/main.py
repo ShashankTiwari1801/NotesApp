@@ -16,7 +16,6 @@ from app.schemas import (
 )
 
 # Recreate database tables with new schema
-Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Cloud Notes App", description="Multi-user Notes Application with API Key Sync", version="2.0.0")
@@ -77,6 +76,24 @@ def login(user_in: UserLogin, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == user_in.username, User.hashed_password == hashed).first()
     if not user:
         raise HTTPException(status_code=400, detail="Invalid username or password")
+    return user
+
+@app.post("/api/auth/generate-key", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+def generate_instant_key(db: Session = Depends(get_db)):
+    """Generate an instant API key without needing a username/password."""
+    unique_id = secrets.token_hex(4)
+    username = f"user_{unique_id}"
+    api_key = "sk_" + secrets.token_hex(24)
+    hashed = hash_password(secrets.token_hex(16))
+
+    user = User(
+        username=username,
+        hashed_password=hashed,
+        api_key=api_key
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
     return user
 
 @app.post("/api/auth/verify-key", response_model=UserResponse)

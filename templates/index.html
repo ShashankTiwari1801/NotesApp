@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cloud Notes - Secure Account Login</title>
+    <title>Cloud Notes - Secure Access</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -46,11 +46,25 @@
                 <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Your notes, synced securely across all your devices.</p>
             </div>
 
+            <!-- Instant Generate API Key Banner / Button (Primary recommendation) -->
+            <div class="mb-6">
+                <button @click="generateInstantKey()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3.5 px-4 rounded-xl shadow-md transition-all flex items-center justify-center space-x-2 text-sm transform active:scale-95">
+                    <i data-lucide="sparkles" class="w-5 h-5"></i>
+                    <span>Generate Instant API Key</span>
+                </button>
+                <p class="text-xs text-slate-400 text-center mt-2">One-click setup. No username or password required!</p>
+            </div>
+
+            <div class="relative flex py-2 items-center mb-6">
+                <div class="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
+                <span class="flex-shrink mx-4 text-xs text-slate-400 uppercase tracking-wider">or sign in below</span>
+                <div class="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
+            </div>
+
             <!-- Auth Tabs -->
             <div class="flex rounded-xl bg-slate-100 dark:bg-slate-900 p-1 mb-6">
                 <button @click="authMode = 'login'" :class="authMode === 'login' ? 'bg-white dark:bg-darkcard text-indigo-600 dark:text-indigo-400 shadow-sm font-semibold' : 'text-slate-600 dark:text-slate-400'" class="flex-1 py-2 text-xs rounded-lg transition-all">Sign In</button>
-                <button @click="authMode = 'register'" :class="authMode === 'register' ? 'bg-white dark:bg-darkcard text-indigo-600 dark:text-indigo-400 shadow-sm font-semibold' : 'text-slate-600 dark:text-slate-400'" class="flex-1 py-2 text-xs rounded-lg transition-all">Create Account</button>
-                <button @click="authMode = 'apikey'" :class="authMode === 'apikey' ? 'bg-white dark:bg-darkcard text-indigo-600 dark:text-indigo-400 shadow-sm font-semibold' : 'text-slate-600 dark:text-slate-400'" class="flex-1 py-2 text-xs rounded-lg transition-all">Use API Key</button>
+                <button @click="authMode = 'apikey'" :class="authMode === 'apikey' ? 'bg-white dark:bg-darkcard text-indigo-600 dark:text-indigo-400 shadow-sm font-semibold' : 'text-slate-600 dark:text-slate-400'" class="flex-1 py-2 text-xs rounded-lg transition-all">Use Existing API Key</button>
             </div>
 
             <!-- Login Form -->
@@ -68,28 +82,8 @@
                 <template x-if="authError">
                     <div class="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 text-xs rounded-xl text-center" x-text="authError"></div>
                 </template>
-                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-4 rounded-xl shadow-sm transition-all text-sm">
+                <button type="submit" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-medium py-3 px-4 rounded-xl shadow-sm transition-all text-sm">
                     Sign In
-                </button>
-            </form>
-
-            <!-- Register Form -->
-            <form x-show="authMode === 'register'" @submit.prevent="register()" class="space-y-4">
-                <div>
-                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Choose Username</label>
-                    <input type="text" x-model="registerForm.username" required placeholder="Choose a username"
-                           class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:border-indigo-500 text-sm">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Password</label>
-                    <input type="password" x-model="registerForm.password" required placeholder="••••••••"
-                           class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:border-indigo-500 text-sm">
-                </div>
-                <template x-if="authError">
-                    <div class="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 text-xs rounded-xl text-center" x-text="authError"></div>
-                </template>
-                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-4 rounded-xl shadow-sm transition-all text-sm">
-                    Create Account & Get API Key
                 </button>
             </form>
 
@@ -99,12 +93,12 @@
                     <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Your Secret API Key</label>
                     <input type="password" x-model="apiKeyInput" required placeholder="sk_..."
                            class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:border-indigo-500 text-sm font-mono">
-                    <p class="text-xs text-slate-400 mt-1">Use this key on your phone or other devices to instantly access your notes.</p>
+                    <p class="text-xs text-slate-400 mt-1">Paste your API key here to sync notes from another device.</p>
                 </div>
                 <template x-if="authError">
                     <div class="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 text-xs rounded-xl text-center" x-text="authError"></div>
                 </template>
-                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-4 rounded-xl shadow-sm transition-all text-sm">
+                <button type="submit" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-medium py-3 px-4 rounded-xl shadow-sm transition-all text-sm">
                     Connect with API Key
                 </button>
             </form>
@@ -129,8 +123,8 @@
 
                 <!-- Logged in User info & API Key button -->
                 <div class="mb-4 p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
-                    <div class="text-xs text-slate-400">Signed in as</div>
-                    <div class="font-semibold text-sm text-slate-800 dark:text-slate-200 truncate" x-text="currentUser.username"></div>
+                    <div class="text-xs text-slate-400">Account / Device ID</div>
+                    <div class="font-semibold text-xs text-slate-800 dark:text-slate-200 truncate font-mono" x-text="currentUser.username"></div>
                     <button @click="showApiKeyModal = true" class="mt-2 text-xs text-indigo-600 dark:text-indigo-400 hover:underline flex items-center space-x-1 font-medium">
                         <i data-lucide="key" class="w-3.5 h-3.5"></i>
                         <span>View My API Key</span>
@@ -299,7 +293,7 @@
                 </button>
             </div>
             <p class="text-sm text-slate-600 dark:text-slate-300 mb-4">
-                Use this API key on your other devices (phone, laptop) under the "Use API Key" tab to instantly sync and access your notes.
+                Use this API key on your other devices (phone, laptop) under the "Use Existing API Key" tab to instantly sync and access your notes.
             </p>
             <div class="flex items-center space-x-2 mb-6">
                 <input type="text" readonly :value="currentUser.api_key"
@@ -388,11 +382,10 @@
         function notesApp() {
             return {
                 isAuthenticated: false,
-                authMode: 'login', // login, register, apikey
+                authMode: 'login', // login, apikey
                 authError: '',
                 currentUser: { id: null, username: '', api_key: '' },
                 loginForm: { username: '', password: '' },
-                registerForm: { username: '', password: '' },
                 apiKeyInput: '',
                 showApiKeyModal: false,
                 notes: [],
@@ -445,6 +438,26 @@
                         console.error('Verify error:', e);
                     }
                 },
+                async generateInstantKey() {
+                    this.authError = '';
+                    try {
+                        const res = await fetch('/api/auth/generate-key', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+                        if (res.ok) {
+                            const user = await res.json();
+                            this.currentUser = user;
+                            localStorage.setItem('notes_api_key', user.api_key);
+                            this.isAuthenticated = true;
+                            await this.loadAppData();
+                        } else {
+                            this.authError = 'Failed to generate API key';
+                        }
+                    } catch (e) {
+                        this.authError = 'Connection error';
+                    }
+                },
                 async login() {
                     this.authError = '';
                     try {
@@ -465,28 +478,6 @@
                         }
                     } catch (e) {
                         this.authError = 'Login failed. Please try again.';
-                    }
-                },
-                async register() {
-                    this.authError = '';
-                    try {
-                        const res = await fetch('/api/auth/register', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(this.registerForm)
-                        });
-                        if (res.ok) {
-                            const user = await res.json();
-                            this.currentUser = user;
-                            localStorage.setItem('notes_api_key', user.api_key);
-                            this.isAuthenticated = true;
-                            await this.loadAppData();
-                        } else {
-                            const err = await res.json();
-                            this.authError = err.detail || 'Registration failed';
-                        }
-                    } catch (e) {
-                        this.authError = 'Registration failed. Please try again.';
                     }
                 },
                 async loginWithApiKey() {
