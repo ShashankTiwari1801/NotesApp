@@ -17,12 +17,14 @@ from app.analytics_schemas import (
 analytics_router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 
-ANALYTICS_PASSWORD = os.environ.get("ANALYTICS_PASSWORD", "admin123")
+def get_analytics_password():
+    return os.environ.get("ANALYTICS_PASSWORD", "admin123")
 
 def verify_analytics_auth(request: Request, x_analytics_password: Optional[str] = Header(None, alias="X-Analytics-Password"), password: Optional[str] = Query(None)):
     header_val = request.headers.get("X-Analytics-Password") or request.headers.get("x-analytics-password") or x_analytics_password
     provided = header_val or password
-    if not provided or provided != ANALYTICS_PASSWORD:
+    expected_password = get_analytics_password()
+    if not provided or provided != expected_password:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Unauthorized: Invalid analytics password"
@@ -36,7 +38,7 @@ def analytics_page(request: Request):
 
 @analytics_router.post("/api/analytics/verify-password")
 def verify_password(payload: PasswordRequest):
-    if payload.password == ANALYTICS_PASSWORD:
+    if payload.password == get_analytics_password():
         return {"success": True}
     raise HTTPException(status_code=403, detail="Incorrect password")
 

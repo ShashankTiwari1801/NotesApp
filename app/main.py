@@ -1,4 +1,14 @@
 import os
+from pathlib import Path
+
+# Load .env file if present
+env_path = Path(".") / ".env"
+if env_path.exists():
+    for line in env_path.read_text().splitlines():
+        if "=" in line and not line.strip().startswith("#"):
+            k, v = line.split("=", 1)
+            os.environ.setdefault(k.strip(), v.strip().strip('"\''))
+
 import hashlib
 import secrets
 from fastapi import FastAPI, Depends, HTTPException, Request, status, Security
