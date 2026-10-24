@@ -96,6 +96,7 @@ def generate_instant_key(db: Session = Depends(get_db)):
     db.refresh(user)
     return user
 
+@app.get("/api/auth/verify-key", response_model=UserResponse)
 @app.post("/api/auth/verify-key", response_model=UserResponse)
 def verify_key(current_user: User = Depends(get_current_user)):
     return current_user
