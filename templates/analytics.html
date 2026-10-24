@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CloudNotes - Analytics Dashboard</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkbg: '#0f172a',
+                        darkcard: '#1e293b',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+<body class="h-full bg-slate-50 dark:bg-darkbg text-slate-900 dark:text-slate-100 transition-colors duration-200"
+      x-data="analyticsApp()"
+      x-init="init()">
+
+    <!-- Password Modal -->
+    <div x-show="!isAuthenticated"
+         x-cloak
+         class="fixed inset-0 z-50 bg-slate-900/85 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-darkcard border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-8 shadow-2xl">
+            <div class="flex flex-col items-center text-center mb-6">
+                <div class="w-14 h-14 bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center mb-4">
+                    <i data-lucide="bar-chart-3" class="w-7 h-7"></i>
+                </div>
+                <h2 class="text-2xl font-bold tracking-tight text-slate-800 dark:text-slate-100">Analytics Access</h2>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Enter your analytics password to view traffic stats.</p>
+            </div>
+
+            <form @submit.prevent="authenticate()" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Password</label>
+                    <input type="password" x-model="passwordInput" required placeholder="Enter password..."
+                           class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:border-indigo-500 text-sm">
+                </div>
+                <template x-if="authError">
+                    <div class="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 text-xs rounded-xl text-center" x-text="authError"></div>
+                </template>
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-4 rounded-xl shadow-sm transition-all text-sm">
+                    View Dashboard
+                </button>
+            </form>
+            <div class="mt-6 text-center">
+                <a href="/" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-medium">&larr; Back to Notes App</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Dashboard Container -->
+    <div class="min-h-screen flex flex-col" x-show="isAuthenticated" x-cloak>
+        <!-- Top Header -->
+        <header class="bg-white dark:bg-darkcard border-b border-slate-200 dark:border-slate-800 h-16 flex items-center justify-between px-6 sticky top-0 z-20">
+            <div class="flex items-center space-x-3">
+                <div class="p-2 bg-indigo-600 rounded-lg text-white">
+                    <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+                </div>
+                <h1 class="text-lg font-bold tracking-tight">CloudNotes Analytics</h1>
+            </div>
+            <div class="flex items-center space-x-4">
+                <div class="flex items-center space-x-2 bg-slate-100 dark:bg-slate-900 p-1 rounded-xl text-xs">
+                    <button @click="changeDays(7)" :class="days === 7 ? 'bg-white dark:bg-darkcard text-indigo-600 font-semibold shadow-sm' : 'text-slate-600 dark:text-slate-400'" class="px-3 py-1.5 rounded-lg transition-all">7 Days</button>
+                    <button @click="changeDays(30)" :class="days === 30 ? 'bg-white dark:bg-darkcard text-indigo-600 font-semibold shadow-sm' : 'text-slate-600 dark:text-slate-400'" class="px-3 py-1.5 rounded-lg transition-all">30 Days</button>
+                    <button @click="changeDays(90)" :class="days === 90 ? 'bg-white dark:bg-darkcard text-indigo-600 font-semibold shadow-sm' : 'text-slate-600 dark:text-slate-400'" class="px-3 py-1.5 rounded-lg transition-all">90 Days</button>
+                </div>
+                <button @click="loadData()" class="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl text-slate-600 dark:text-slate-300 transition-colors" title="Refresh Data">
+                    <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                </button>
+                <a href="/" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-medium transition-all shadow-sm">
+                    Back to Notes
+                </a>
+            </div>
+        </header>
+
+        <!-- Content Area -->
+        <main class="flex-1 p-6 max-w-7xl mx-auto w-full space-y-6">
+
+            <!-- Summary Stats Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- Total Views -->
+                <div class="bg-white dark:bg-darkcard border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Page Views</span>
+                        <div class="p-2 bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 rounded-xl">
+                            <i data-lucide="eye" class="w-4 h-4"></i>
+                        </div>
+                    </div>
+                    <div class="text-3xl font-bold text-slate-800 dark:text-slate-100" x-text="summary.total_views || 0">0</div>
+                    <div class="text-xs text-slate-400 mt-1">
+                        <span class="text-emerald-500 font-semibold" x-text="'+' + (summary.views_today || 0)">+0</span> today
+                    </div>
+                </div>
+
+                <!-- Unique Visitors -->
+                <div class="bg-white dark:bg-darkcard border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Unique Visitors</span>
+                        <div class="p-2 bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 rounded-xl">
+                            <i data-lucide="users" class="w-4 h-4"></i>
+                        </div>
+                    </div>
+                    <div class="text-3xl font-bold text-slate-800 dark:text-slate-100" x-text="summary.unique_visitors || 0">0</div>
+                    <div class="text-xs text-slate-400 mt-1">Distinct visitor sessions</div>
+                </div>
+
+                <!-- Views This Month -->
+                <div class="bg-white dark:bg-darkcard border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Views (30 Days)</span>
+                        <div class="p-2 bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400 rounded-xl">
+                            <i data-lucide="calendar" class="w-4 h-4"></i>
+                        </div>
+                    </div>
+                    <div class="text-3xl font-bold text-slate-800 dark:text-slate-100" x-text="summary.views_this_month || 0">0</div>
+                    <div class="text-xs text-slate-400 mt-1">Last 30 rolling days</div>
+                </div>
+
+                <!-- Avg Response Time -->
+                <div class="bg-white dark:bg-darkcard border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Avg Response Time</span>
+                        <div class="p-2 bg-purple-50 dark:bg-purple-950 text-purple-600 dark:text-purple-400 rounded-xl">
+                            <i data-lucide="zap" class="w-4 h-4"></i>
+                        </div>
+                    </div>
+                    <div class="text-3xl font-bold text-slate-800 dark:text-slate-100" x-text="(summary.avg_response_time_ms || 0) + ' ms'">0 ms</div>
+                    <div class="text-xs text-slate-400 mt-1">Server latency</div>
+                </div>
+            </div>
+
+            <!-- Views Over Time Chart -->
+            <div class="bg-white dark:bg-darkcard border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center space-x-2">
+                        <i data-lucide="trending-up" class="w-5 h-5 text-indigo-500"></i>
+                        <span>Traffic Over Time</span>
+                    </h3>
+                </div>
+                <div class="h-72 w-full">
+                    <canvas id="viewsChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Two Column Grid for Distribution Charts -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Top Pages -->
+                <div class="bg-white dark:bg-darkcard border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm flex flex-col">
+                    <h3 class="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center space-x-2 mb-6">
+                        <i data-lucide="file-text" class="w-5 h-5 text-indigo-500"></i>
+                        <span>Top Pages</span>
+                    </h3>
+                    <div class="h-64 flex-1 flex items-center justify-center">
+                        <canvas id="pagesChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Browsers -->
+                <div class="bg-white dark:bg-darkcard border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm flex flex-col">
+                    <h3 class="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center space-x-2 mb-6">
+                        <i data-lucide="compass" class="w-5 h-5 text-indigo-500"></i>
+                        <span>Browser Distribution</span>
+                    </h3>
+                    <div class="h-64 flex-1 flex items-center justify-center">
+                        <canvas id="browsersChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Second Two Column Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Devices -->
+                <div class="bg-white dark:bg-darkcard border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm flex flex-col">
+                    <h3 class="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center space-x-2 mb-6">
+                        <i data-lucide="smartphone" class="w-5 h-5 text-indigo-500"></i>
+                        <span>Device Types</span>
+                    </h3>
+                    <div class="h-64 flex-1 flex items-center justify-center">
+                        <canvas id="devicesChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Referrers -->
+                <div class="bg-white dark:bg-darkcard border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm flex flex-col">
+                    <h3 class="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center space-x-2 mb-6">
+                        <i data-lucide="link" class="w-5 h-5 text-indigo-500"></i>
+                        <span>Top Referrers</span>
+                    </h3>
+                    <div class="h-64 flex-1 flex items-center justify-center">
+                        <canvas id="referrersChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Visitors Table -->
+            <div class="bg-white dark:bg-darkcard border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+                <h3 class="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center space-x-2 mb-4">
+                    <i data-lucide="clock" class="w-5 h-5 text-indigo-500"></i>
+                    <span>Recent Visits Log</span>
+                </h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-50 dark:bg-slate-900 text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
+                            <tr>
+                                <th class="p-3">Time</th>
+                                <th class="p-3">Path</th>
+                                <th class="p-3">Method</th>
+                                <th class="p-3">Status</th>
+                                <th class="p-3">IP Address</th>
+                                <th class="p-3">Device / OS / Browser</th>
+                                <th class="p-3">Referrer</th>
+                                <th class="p-3">Duration</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                            <template x-for="visit in recentVisits" :key="visit.id">
+                                <tr class="hover:bg-slate-50 dark:hover:bg-slate-900/55 transition-colors">
+                                    <td class="p-3 whitespace-nowrap text-slate-500" x-text="formatTime(visit.timestamp)"></td>
+                                    <td class="p-3 font-semibold text-indigo-600 dark:text-indigo-400" x-text="visit.path"></td>
+                                    <td class="p-3 whitespace-nowrap">
+                                        <span class="px-2 py-0.5 rounded font-mono font-bold"
+                                              :class="visit.method === 'GET' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400' : 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400'"
+                                              x-text="visit.method"></span>
+                                    </td>
+                                    <td class="p-3 whitespace-nowrap">
+                                        <span class="px-2 py-0.5 rounded font-mono font-bold"
+                                              :class="visit.status_code === 200 ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-950 dark:text-rose-400'"
+                                              x-text="visit.status_code"></span>
+                                    </td>
+                                    <td class="p-3 font-mono text-slate-500" x-text="visit.ip_address"></td>
+                                    <td class="p-3 text-slate-600 dark:text-slate-300">
+                                        <span x-text="(visit.device_type || 'Desktop') + ' / ' + (visit.os || 'OS') + ' / ' + (visit.browser || 'Browser')"></span>
+                                    </td>
+                                    <td class="p-3 text-slate-400 truncate max-w-xs" x-text="visit.referrer || 'Direct'"></td>
+                                    <td class="p-3 whitespace-nowrap font-mono text-slate-500" x-text="(visit.response_time_ms ? visit.response_time_ms.toFixed(1) : '0') + 'ms'"></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        function analyticsApp() {
+            return {
+                isAuthenticated: false,
+                passwordInput: '',
+                authError: '',
+                days: 30,
+                summary: {},
+                recentVisits: [],
+                charts: {},
+                async init() {
+                    const savedPass = sessionStorage.getItem('analytics_password');
+                    if (savedPass) {
+                        this.passwordInput = savedPass;
+                        await this.verifyAndLoad();
+                    }
+                },
+                async authenticate() {
+                    this.authError = '';
+                    try {
+                        const res = await fetch('/api/analytics/verify-password', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ password: this.passwordInput })
+                        });
+                        if (res.ok) {
+                            sessionStorage.setItem('analytics_password', this.passwordInput);
+                            this.isAuthenticated = true;
+                            await this.loadData();
+                        } else {
+                            this.authError = 'Incorrect password';
+                        }
+                    } catch (e) {
+                        this.authError = 'Authentication error';
+                    }
+                },
+                async verifyAndLoad() {
+                    try {
+                        const res = await fetch('/api/analytics/summary', {
+                            headers: { 'X-Analytics-Password': this.passwordInput }
+                        });
+                        if (res.ok) {
+                            this.isAuthenticated = true;
+                            await this.loadData();
+                        } else {
+                            sessionStorage.removeItem('analytics_password');
+                            this.isAuthenticated = false;
+                        }
+                    } catch (e) {
+                        this.isAuthenticated = false;
+                    }
+                },
+                async changeDays(d) {
+                    this.days = d;
+                    await this.loadViewsOverTime();
+                },
+                async loadData() {
+                    const pass = this.passwordInput;
+                    const headers = { 'X-Analytics-Password': pass };
+
+                    try {
+                        // Summary
+                        const sumRes = await fetch('/api/analytics/summary', { headers });
+                        if (sumRes.ok) this.summary = await sumRes.json();
+
+                        // Recent Visits
+                        const recRes = await fetch('/api/analytics/recent?limit=50', { headers });
+                        if (recRes.ok) this.recentVisits = await recRes.json();
+
+                        // Charts
+                        await this.loadViewsOverTime();
+                        await this.loadTopPages();
+                        await this.loadBrowsers();
+                        await this.loadDevices();
+                        await this.loadReferrers();
+
+                        setTimeout(() => lucide.createIcons(), 50);
+                    } catch (e) {
+                        console.error('Error loading analytics data:', e);
+                    }
+                },
+                async loadViewsOverTime() {
+                    const headers = { 'X-Analytics-Password': this.passwordInput };
+                    const res = await fetch(`/api/analytics/views-over-time?days=${this.days}`, { headers });
+                    if (!res.ok) return;
+                    const data = await res.json();
+
+                    const labels = data.map(i => i.date);
+                    const counts = data.map(i => i.count);
+
+                    const ctx = document.getElementById('viewsChart').getContext('2d');
+                    if (this.charts.views) this.charts.views.destroy();
+
+                    this.charts.views = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Page Views',
+                                data: counts,
+                                borderColor: '#6366f1',
+                                backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                                borderWidth: 2,
+                                fill: true,
+                                tension: 0.3
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                x: { grid: { display: false } },
+                                y: { grid: { color: 'rgba(100, 116, 139, 0.1)' } }
+                            }
+                        }
+                    });
+                },
+                async loadTopPages() {
+                    const headers = { 'X-Analytics-Password': this.passwordInput };
+                    const res = await fetch('/api/analytics/top-pages?limit=8', { headers });
+                    if (!res.ok) return;
+                    const data = await res.json();
+
+                    const ctx = document.getElementById('pagesChart').getContext('2d');
+                    if (this.charts.pages) this.charts.pages.destroy();
+
+                    this.charts.pages = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: data.map(i => i.path),
+                            datasets: [{
+                                label: 'Views',
+                                data: data.map(i => i.count),
+                                backgroundColor: '#6366f1',
+                                borderRadius: 8
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                x: { grid: { display: false } },
+                                y: { grid: { color: 'rgba(100, 116, 139, 0.1)' } }
+                            }
+                        }
+                    });
+                },
+                async loadBrowsers() {
+                    const headers = { 'X-Analytics-Password': this.passwordInput };
+                    const res = await fetch('/api/analytics/browsers', { headers });
+                    if (!res.ok) return;
+                    const data = await res.json();
+
+                    const ctx = document.getElementById('browsersChart').getContext('2d');
+                    if (this.charts.browsers) this.charts.browsers.destroy();
+
+                    this.charts.browsers = new Chart(ctx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: data.map(i => i.name),
+                            datasets: [{
+                                data: data.map(i => i.count),
+                                backgroundColor: ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#64748b']
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { position: 'bottom' } }
+                        }
+                    });
+                },
+                async loadDevices() {
+                    const headers = { 'X-Analytics-Password': this.passwordInput };
+                    const res = await fetch('/api/analytics/devices', { headers });
+                    if (!res.ok) return;
+                    const data = await res.json();
+
+                    const ctx = document.getElementById('devicesChart').getContext('2d');
+                    if (this.charts.devices) this.charts.devices.destroy();
+
+                    this.charts.devices = new Chart(ctx, {
+                        type: 'pie',
+                        data: {
+                            labels: data.map(i => i.name),
+                            datasets: [{
+                                data: data.map(i => i.count),
+                                backgroundColor: ['#3b82f6', '#10b981', '#f97316', '#64748b']
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { position: 'bottom' } }
+                        }
+                    });
+                },
+                async loadReferrers() {
+                    const headers = { 'X-Analytics-Password': this.passwordInput };
+                    const res = await fetch('/api/analytics/referrers?limit=8', { headers });
+                    if (!res.ok) return;
+                    const data = await res.json();
+
+                    const ctx = document.getElementById('referrersChart').getContext('2d');
+                    if (this.charts.referrers) this.charts.referrers.destroy();
+
+                    this.charts.referrers = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: data.map(i => i.referrer),
+                            datasets: [{
+                                label: 'Visits',
+                                data: data.map(i => i.count),
+                                backgroundColor: '#10b981',
+                                borderRadius: 8
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                x: { grid: { display: false } },
+                                y: { grid: { color: 'rgba(100, 116, 139, 0.1)' } }
+                            }
+                        }
+                    });
+                },
+                formatTime(dateStr) {
+                    const date = new Date(dateStr);
+                    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' ' + date.toLocaleDateString();
+                }
+            }
+        }
+    </script>
+</body>
+</html>

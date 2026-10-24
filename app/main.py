@@ -10,6 +10,9 @@ from typing import List, Optional
 
 from app.database import engine, Base, get_db
 from app.models import User, Note
+from app.analytics_models import PageView
+from app.analytics_middleware import AnalyticsMiddleware
+from app.analytics_routes import analytics_router
 from app.schemas import (
     UserCreate, UserLogin, UserResponse, ApiKeyLogin,
     NoteCreate, NoteUpdate, NoteResponse
@@ -19,6 +22,12 @@ from app.schemas import (
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Cloud Notes App", description="Multi-user Notes Application with API Key Sync", version="2.0.0")
+
+# Register analytics middleware
+app.add_middleware(AnalyticsMiddleware)
+
+# Include analytics router
+app.include_router(analytics_router)
 
 templates = Jinja2Templates(directory="templates")
 
