@@ -28,7 +28,6 @@ def verify_analytics_auth(x_analytics_password: Optional[str] = Header(None), pa
         )
     return True
 
-@app_get_route_placeholder = None # Just structure note
 
 @analytics_router.get("/analytics", response_class=HTMLResponse)
 def analytics_page(request: Request):
