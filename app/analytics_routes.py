@@ -19,8 +19,9 @@ templates = Jinja2Templates(directory="templates")
 
 ANALYTICS_PASSWORD = os.environ.get("ANALYTICS_PASSWORD", "admin123")
 
-def verify_analytics_auth(x_analytics_password: Optional[str] = Header(None), password: Optional[str] = Query(None)):
-    provided = x_analytics_password or password
+def verify_analytics_auth(request: Request, x_analytics_password: Optional[str] = Header(None, alias="X-Analytics-Password"), password: Optional[str] = Query(None)):
+    header_val = request.headers.get("X-Analytics-Password") or request.headers.get("x-analytics-password") or x_analytics_password
+    provided = header_val or password
     if not provided or provided != ANALYTICS_PASSWORD:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
