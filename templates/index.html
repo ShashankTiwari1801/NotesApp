@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud Notes - Secure Account Login</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkbg: '#0f172a',
+                        darkcard: '#1e293b',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- Marked.js for Markdown Preview -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+<body class="h-full bg-slate-50 dark:bg-darkbg text-slate-900 dark:text-slate-100 transition-colors duration-200"
+      x-data="notesApp()"
+      x-init="init()">
+
+    <!-- Authentication Modal / Overlay -->
+    <div x-show="!isAuthenticated"
+         x-cloak
+         class="fixed inset-0 z-50 bg-slate-900/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white dark:bg-darkcard border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-8 shadow-2xl my-8">
+            <div class="flex flex-col items-center text-center mb-6">
+                <div class="w-14 h-14 bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center mb-4">
+                    <i data-lucide="notebook-pen" class="w-7 h-7"></i>
+                </div>
+                <h2 class="text-2xl font-bold tracking-tight text-slate-800 dark:text-slate-100">CloudNotes</h2>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Your notes, synced securely across all your devices.</p>
+            </div>
+
+            <!-- Auth Tabs -->
+            <div class="flex rounded-xl bg-slate-100 dark:bg-slate-900 p-1 mb-6">
+                <button @click="authMode = 'login'" :class="authMode === 'login' ? 'bg-white dark:bg-darkcard text-indigo-600 dark:text-indigo-400 shadow-sm font-semibold' : 'text-slate-600 dark:text-slate-400'" class="flex-1 py-2 text-xs rounded-lg transition-all">Sign In</button>
+                <button @click="authMode = 'register'" :class="authMode === 'register' ? 'bg-white dark:bg-darkcard text-indigo-600 dark:text-indigo-400 shadow-sm font-semibold' : 'text-slate-600 dark:text-slate-400'" class="flex-1 py-2 text-xs rounded-lg transition-all">Create Account</button>
+                <button @click="authMode = 'apikey'" :class="authMode === 'apikey' ? 'bg-white dark:bg-darkcard text-indigo-600 dark:text-indigo-400 shadow-sm font-semibold' : 'text-slate-600 dark:text-slate-400'" class="flex-1 py-2 text-xs rounded-lg transition-all">Use API Key</button>
+            </div>
+
+            <!-- Login Form -->
+            <form x-show="authMode === 'login'" @submit.prevent="login()" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Username</label>
+                    <input type="text" x-model="loginForm.username" required placeholder="Your username"
+                           class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:border-indigo-500 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Password</label>
+                    <input type="password" x-model="loginForm.password" required placeholder="••••••••"
+                           class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:border-indigo-500 text-sm">
+                </div>
+                <template x-if="authError">
+                    <div class="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 text-xs rounded-xl text-center" x-text="authError"></div>
+                </template>
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-4 rounded-xl shadow-sm transition-all text-sm">
+                    Sign In
+                </button>
+            </form>
+
+            <!-- Register Form -->
+            <form x-show="authMode === 'register'" @submit.prevent="register()" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Choose Username</label>
+                    <input type="text" x-model="registerForm.username" required placeholder="Choose a username"
+                           class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:border-indigo-500 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Password</label>
+                    <input type="password" x-model="registerForm.password" required placeholder="••••••••"
+                           class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:border-indigo-500 text-sm">
+                </div>
+                <template x-if="authError">
+                    <div class="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 text-xs rounded-xl text-center" x-text="authError"></div>
+                </template>
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-4 rounded-xl shadow-sm transition-all text-sm">
+                    Create Account & Get API Key
+                </button>
+            </form>
+
+            <!-- API Key Login Form -->
+            <form x-show="authMode === 'apikey'" @submit.prevent="loginWithApiKey()" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Your Secret API Key</label>
+                    <input type="password" x-model="apiKeyInput" required placeholder="sk_..."
+                           class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:border-indigo-500 text-sm font-mono">
+                    <p class="text-xs text-slate-400 mt-1">Use this key on your phone or other devices to instantly access your notes.</p>
+                </div>
+                <template x-if="authError">
+                    <div class="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 text-xs rounded-xl text-center" x-text="authError"></div>
+                </template>
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-4 rounded-xl shadow-sm transition-all text-sm">
+                    Connect with API Key
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Application Container -->
+    <div class="flex h-screen overflow-hidden" x-show="isAuthenticated" x-cloak>
+
+        <!-- Sidebar -->
+        <aside class="hidden md:flex md:flex-shrink-0">
+            <div class="flex flex-col w-64 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-darkcard p-4">
+                <!-- App Logo/Brand -->
+                <div class="flex items-center justify-between mb-4 px-2">
+                    <div class="flex items-center space-x-2">
+                        <div class="p-2 bg-indigo-600 rounded-lg text-white">
+                            <i data-lucide="notebook-pen" class="w-6 h-6"></i>
+                        </div>
+                        <span class="text-xl font-bold tracking-tight">CloudNotes</span>
+                    </div>
+                </div>
+
+                <!-- Logged in User info & API Key button -->
+                <div class="mb-4 p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+                    <div class="text-xs text-slate-400">Signed in as</div>
+                    <div class="font-semibold text-sm text-slate-800 dark:text-slate-200 truncate" x-text="currentUser.username"></div>
+                    <button @click="showApiKeyModal = true" class="mt-2 text-xs text-indigo-600 dark:text-indigo-400 hover:underline flex items-center space-x-1 font-medium">
+                        <i data-lucide="key" class="w-3.5 h-3.5"></i>
+                        <span>View My API Key</span>
+                    </button>
+                </div>
+
+                <!-- New Note Button -->
+                <button @click="openModal()" class="mb-6 flex items-center justify-center space-x-2 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 px-4 rounded-xl shadow-sm transition-all transform active:scale-95">
+                    <i data-lucide="plus" class="w-5 h-5"></i>
+                    <span>New Note</span>
+                </button>
+
+                <!-- Navigation Links -->
+                <nav class="space-y-1 flex-1 overflow-y-auto">
+                    <button @click="selectCategory('All')"
+                            :class="selectedCategory === 'All' && !filterPinned ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 font-semibold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'"
+                            class="flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors">
+                        <div class="flex items-center space-x-3">
+                            <i data-lucide="layout-grid" class="w-4 h-4"></i>
+                            <span>All Notes</span>
+                        </div>
+                        <span class="text-xs px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300" x-text="notes.length"></span>
+                    </button>
+
+                    <button @click="filterPinnedNotes()"
+                            :class="filterPinned ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 font-semibold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'"
+                            class="flex items-center space-x-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors">
+                        <i data-lucide="pin" class="w-4 h-4"></i>
+                        <span>Pinned Notes</span>
+                    </button>
+
+                    <!-- Categories Header -->
+                    <div class="pt-6 pb-2 px-3 text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                        Categories
+                    </div>
+
+                    <template x-for="cat in categories" :key="cat">
+                        <button @click="selectCategory(cat)"
+                                :class="selectedCategory === cat && !filterPinned ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 font-semibold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'"
+                                class="flex items-center space-x-3 w-full px-3 py-2 rounded-lg text-sm transition-colors">
+                            <i data-lucide="folder" class="w-4 h-4 text-indigo-500"></i>
+                            <span class="truncate" x-text="cat"></span>
+                        </button>
+                    </template>
+                </nav>
+
+                <!-- Footer Theme Toggle & Logout -->
+                <div class="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                    <button @click="toggleDarkMode()" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors" title="Toggle Theme">
+                        <i x-show="!darkMode" data-lucide="moon" class="w-4 h-4"></i>
+                        <i x-show="darkMode" data-lucide="sun" class="w-4 h-4"></i>
+                    </button>
+                    <button @click="logout()" class="text-xs text-rose-500 hover:underline font-medium">
+                        Sign Out
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+            <!-- Top Header -->
+            <header class="bg-white dark:bg-darkcard border-b border-slate-200 dark:border-slate-800 h-16 flex items-center justify-between px-6 z-10">
+                <div class="flex items-center space-x-4 flex-1 max-w-xl">
+                    <div class="relative w-full">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+                            <i data-lucide="search" class="w-4 h-4"></i>
+                        </span>
+                        <input type="text"
+                               x-model="searchQuery"
+                               @input.debounce.300ms="fetchNotes()"
+                               placeholder="Search notes by title or content..."
+                               class="w-full pl-10 pr-4 py-2 bg-slate-100 dark:bg-slate-900 border border-transparent focus:border-indigo-500 dark:focus:border-indigo-500 rounded-xl text-sm focus:outline-none transition-colors">
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm font-medium text-slate-600 dark:text-slate-300 hidden sm:inline" x-text="selectedCategory === 'All' ? 'All Notes' : selectedCategory"></span>
+                    <button @click="openModal()" class="md:hidden bg-indigo-600 text-white p-2 rounded-lg">
+                        <i data-lucide="plus" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Notes List / Grid View -->
+            <main class="flex-1 overflow-y-auto p-6 bg-slate-50 dark:bg-darkbg">
+                <div class="max-w-7xl mx-auto">
+
+                    <!-- Empty State -->
+                    <template x-if="notes.length === 0">
+                        <div class="flex flex-col items-center justify-center py-20 text-center">
+                            <div class="w-16 h-16 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center mb-4">
+                                <i data-lucide="file-text" class="w-8 h-8"></i>
+                            </div>
+                            <h3 class="text-lg font-semibold text-slate-700 dark:text-slate-200">No notes found</h3>
+                            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-sm">Create your first note to get started capturing your thoughts, ideas, and tasks.</p>
+                            <button @click="openModal()" class="mt-6 bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2 rounded-xl transition-all shadow-sm">
+                                Create Note
+                            </button>
+                        </div>
+                    </template>
+
+                    <!-- Notes Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <template x-for="note in notes" :key="note.id">
+                            <div class="bg-white dark:bg-darkcard border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group relative">
+
+                                <!-- Card Header -->
+                                <div>
+                                    <div class="flex items-start justify-between mb-3">
+                                        <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400" x-text="note.category"></span>
+                                        <div class="flex items-center space-x-1">
+                                            <!-- Pin Button -->
+                                            <button @click="togglePin(note.id)"
+                                                    :class="note.pinned ? 'text-amber-500 fill-amber-500' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'"
+                                                    class="p-1.5 rounded-lg transition-colors" title="Pin Note">
+                                                <i data-lucide="pin" class="w-4 h-4"></i>
+                                            </button>
+                                            <!-- Edit Button -->
+                                            <button @click="editNote(note)" class="p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg transition-colors" title="Edit Note">
+                                                <i data-lucide="edit-3" class="w-4 h-4"></i>
+                                            </button>
+                                            <!-- Delete Button -->
+                                            <button @click="deleteNote(note.id)" class="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg transition-colors" title="Delete Note">
+                                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <h2 class="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2 line-clamp-1" x-text="note.title"></h2>
+
+                                    <div class="text-sm text-slate-600 dark:text-slate-300 line-clamp-4 prose dark:prose-invert mb-4"
+                                         x-html="renderMarkdown(note.content)"></div>
+                                </div>
+
+                                <!-- Card Footer -->
+                                <div class="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-400">
+                                    <span x-text="formatDate(note.updated_at)"></span>
+                                    <div class="flex flex-wrap gap-1" x-show="note.tags">
+                                        <template x-for="tag in note.tags.split(',').filter(t => t.trim())">
+                                            <span class="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-md" x-text="'#' + tag.trim()"></span>
+                                        </template>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- API Key Modal (View & Copy) -->
+    <div x-show="showApiKeyModal"
+         x-cloak
+         class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+        <div @click.away="showApiKeyModal = false" class="bg-white dark:bg-darkcard border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800 mb-4">
+                <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center space-x-2">
+                    <i data-lucide="key" class="w-5 h-5 text-indigo-500"></i>
+                    <span>Your Sync API Key</span>
+                </h3>
+                <button @click="showApiKeyModal = false" class="p-1 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-300 mb-4">
+                Use this API key on your other devices (phone, laptop) under the "Use API Key" tab to instantly sync and access your notes.
+            </p>
+            <div class="flex items-center space-x-2 mb-6">
+                <input type="text" readonly :value="currentUser.api_key"
+                       class="w-full px-3 py-2 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-mono text-slate-700 dark:text-slate-300 select-all">
+                <button @click="navigator.clipboard.writeText(currentUser.api_key); alert('API Key copied to clipboard!');"
+                        class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-medium transition-all">
+                    Copy
+                </button>
+            </div>
+            <button @click="showApiKeyModal = false" class="w-full py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm font-medium hover:bg-slate-200 transition-colors">
+                Close
+            </button>
+        </div>
+    </div>
+
+    <!-- Note Modal (Create / Edit) -->
+    <div x-show="isModalOpen"
+         x-cloak
+         class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+        <div @click.away="closeModal()" class="bg-white dark:bg-darkcard border border-slate-200 dark:border-slate-800 rounded-2xl max-w-2xl w-full p-6 shadow-2xl transform transition-all">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800 mb-4">
+                <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100" x-text="isEditing ? 'Edit Note' : 'Create New Note'"></h3>
+                <button @click="closeModal()" class="p-1 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form @submit.prevent="saveNote()" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Title</label>
+                    <input type="text" x-model="form.title" required placeholder="Note title..."
+                           class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:border-indigo-500 text-sm">
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Category</label>
+                        <input type="text" x-model="form.category" placeholder="e.g. Work, Personal, Ideas"
+                               class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:border-indigo-500 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Tags (comma separated)</label>
+                        <input type="text" x-model="form.tags" placeholder="python, fastapi, idea"
+                               class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:border-indigo-500 text-sm">
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Content (Markdown Supported)</label>
+                        <div class="flex space-x-2 text-xs">
+                            <button type="button" @click="previewMode = false" :class="!previewMode ? 'text-indigo-600 font-bold' : 'text-slate-400'">Write</button>
+                            <span>|</span>
+                            <button type="button" @click="previewMode = true" :class="previewMode ? 'text-indigo-600 font-bold' : 'text-slate-400'">Preview</button>
+                        </div>
+                    </div>
+
+                    <div x-show="!previewMode">
+                        <textarea x-model="form.content" rows="8" placeholder="Write your note in markdown..."
+                                  class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:border-indigo-500 text-sm font-mono"></textarea>
+                    </div>
+
+                    <div x-show="previewMode" class="w-full h-48 px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-y-auto prose dark:prose-invert text-sm"
+                         x-html="renderMarkdown(form.content)"></div>
+                </div>
+
+                <div class="flex items-center space-x-2">
+                    <input type="checkbox" id="pinned" x-model="form.pinned" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                    <label for="pinned" class="text-sm font-medium text-slate-700 dark:text-slate-300">Pin this note</label>
+                </div>
+
+                <div class="flex items-center justify-end space-x-3 pt-4 border-t border-slate-200 dark:border-slate-800">
+                    <button type="button" @click="closeModal()" class="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium shadow-sm transition-all">
+                        Save Note
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        function notesApp() {
+            return {
+                isAuthenticated: false,
+                authMode: 'login', // login, register, apikey
+                authError: '',
+                currentUser: { id: null, username: '', api_key: '' },
+                loginForm: { username: '', password: '' },
+                registerForm: { username: '', password: '' },
+                apiKeyInput: '',
+                showApiKeyModal: false,
+                notes: [],
+                categories: [],
+                selectedCategory: 'All',
+                filterPinned: false,
+                searchQuery: '',
+                isModalOpen: false,
+                isEditing: false,
+                editingId: null,
+                previewMode: false,
+                darkMode: false,
+                form: {
+                    title: '',
+                    content: '',
+                    category: 'General',
+                    tags: '',
+                    pinned: false
+                },
+                async init() {
+                    if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                        this.darkMode = true;
+                        document.documentElement.classList.add('dark');
+                    } else {
+                        this.darkMode = false;
+                        document.documentElement.classList.remove('dark');
+                    }
+
+                    const savedKey = localStorage.getItem('notes_api_key');
+                    if (savedKey) {
+                        await this.verifyApiKey(savedKey);
+                    }
+                },
+                async verifyApiKey(key) {
+                    try {
+                        const res = await fetch('/api/auth/verify-key', {
+                            headers: { 'X-API-Key': key }
+                        });
+                        if (res.ok) {
+                            const user = await res.json();
+                            this.currentUser = user;
+                            localStorage.setItem('notes_api_key', user.api_key);
+                            this.isAuthenticated = true;
+                            await this.loadAppData();
+                        } else {
+                            localStorage.removeItem('notes_api_key');
+                            this.isAuthenticated = false;
+                        }
+                    } catch (e) {
+                        console.error('Verify error:', e);
+                    }
+                },
+                async login() {
+                    this.authError = '';
+                    try {
+                        const res = await fetch('/api/auth/login', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(this.loginForm)
+                        });
+                        if (res.ok) {
+                            const user = await res.json();
+                            this.currentUser = user;
+                            localStorage.setItem('notes_api_key', user.api_key);
+                            this.isAuthenticated = true;
+                            await this.loadAppData();
+                        } else {
+                            const err = await res.json();
+                            this.authError = err.detail || 'Invalid username or password';
+                        }
+                    } catch (e) {
+                        this.authError = 'Login failed. Please try again.';
+                    }
+                },
+                async register() {
+                    this.authError = '';
+                    try {
+                        const res = await fetch('/api/auth/register', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(this.registerForm)
+                        });
+                        if (res.ok) {
+                            const user = await res.json();
+                            this.currentUser = user;
+                            localStorage.setItem('notes_api_key', user.api_key);
+                            this.isAuthenticated = true;
+                            await this.loadAppData();
+                        } else {
+                            const err = await res.json();
+                            this.authError = err.detail || 'Registration failed';
+                        }
+                    } catch (e) {
+                        this.authError = 'Registration failed. Please try again.';
+                    }
+                },
+                async loginWithApiKey() {
+                    this.authError = '';
+                    const key = this.apiKeyInput.trim();
+                    if (!key) return;
+                    try {
+                        const res = await fetch('/api/auth/verify-key', {
+                            headers: { 'X-API-Key': key }
+                        });
+                        if (res.ok) {
+                            const user = await res.json();
+                            this.currentUser = user;
+                            localStorage.setItem('notes_api_key', user.api_key);
+                            this.isAuthenticated = true;
+                            await this.loadAppData();
+                        } else {
+                            this.authError = 'Invalid API Key';
+                        }
+                    } catch (e) {
+                        this.authError = 'Verification failed';
+                    }
+                },
+                logout() {
+                    localStorage.removeItem('notes_api_key');
+                    this.isAuthenticated = false;
+                    this.currentUser = { id: null, username: '', api_key: '' };
+                    this.apiKeyInput = '';
+                },
+                toggleDarkMode() {
+                    this.darkMode = !this.darkMode;
+                    if (this.darkMode) {
+                        document.documentElement.classList.add('dark');
+                        localStorage.theme = 'dark';
+                    } else {
+                        document.documentElement.classList.remove('dark');
+                        localStorage.theme = 'light';
+                    }
+                },
+                async loadAppData() {
+                    await this.fetchNotes();
+                    setTimeout(() => lucide.createIcons(), 50);
+                },
+                async fetchCategories() {
+                    const cats = new Set();
+                    this.notes.forEach(n => {
+                        if (n.category) cats.add(n.category);
+                    });
+                    this.categories = Array.from(cats);
+                },
+                async fetchNotes() {
+                    const apiKey = localStorage.getItem('notes_api_key');
+                    let url = '/api/notes?';
+                    let params = new URLSearchParams();
+                    if (this.searchQuery) params.append('search', this.searchQuery);
+                    if (this.selectedCategory !== 'All' && !this.filterPinned) params.append('category', this.selectedCategory);
+
+                    try {
+                        const res = await fetch(url + params.toString(), {
+                            headers: { 'X-API-Key': apiKey }
+                        });
+                        if (res.status === 403 || res.status === 401) {
+                            this.logout();
+                            return;
+                        }
+                        let data = await res.json();
+                        if (this.filterPinned) {
+                            data = data.filter(n => n.pinned);
+                        }
+                        this.notes = data;
+                        this.fetchCategories();
+                        setTimeout(() => lucide.createIcons(), 50);
+                    } catch (e) {
+                        console.error('Error fetching notes:', e);
+                    }
+                },
+                selectCategory(cat) {
+                    this.selectedCategory = cat;
+                    this.filterPinned = false;
+                    this.fetchNotes();
+                },
+                filterPinnedNotes() {
+                    this.filterPinned = true;
+                    this.selectedCategory = 'All';
+                    this.fetchNotes();
+                },
+                openModal() {
+                    this.isEditing = false;
+                    this.editingId = null;
+                    this.form = { title: '', content: '', category: this.selectedCategory === 'All' ? 'General' : this.selectedCategory, tags: '', pinned: false };
+                    this.previewMode = false;
+                    this.isModalOpen = true;
+                },
+                editNote(note) {
+                    this.isEditing = true;
+                    this.editingId = note.id;
+                    this.form = { title: note.title, content: note.content || '', category: note.category, tags: note.tags || '', pinned: note.pinned };
+                    this.previewMode = false;
+                    this.isModalOpen = true;
+                },
+                closeModal() {
+                    this.isModalOpen = false;
+                },
+                async saveNote() {
+                    const apiKey = localStorage.getItem('notes_api_key');
+                    const url = this.isEditing ? `/api/notes/${this.editingId}` : '/api/notes';
+                    const method = this.isEditing ? 'PUT' : 'POST';
+
+                    try {
+                        const res = await fetch(url, {
+                            method: method,
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-API-Key': apiKey
+                            },
+                            body: JSON.stringify(this.form)
+                        });
+                        if (res.ok) {
+                            this.closeModal();
+                            this.fetchNotes();
+                        } else if (res.status === 403 || res.status === 401) {
+                            this.logout();
+                        }
+                    } catch (e) {
+                        console.error('Error saving note:', e);
+                    }
+                },
+                async deleteNote(id) {
+                    if (!confirm('Are you sure you want to delete this note?')) return;
+                    const apiKey = localStorage.getItem('notes_api_key');
+                    try {
+                        const res = await fetch(`/api/notes/${id}`, {
+                            method: 'DELETE',
+                            headers: { 'X-API-Key': apiKey }
+                        });
+                        if (res.ok || res.status === 204) {
+                            this.fetchNotes();
+                        } else if (res.status === 403 || res.status === 401) {
+                            this.logout();
+                        }
+                    } catch (e) {
+                        console.error('Error deleting note:', e);
+                    }
+                },
+                async togglePin(id) {
+                    const apiKey = localStorage.getItem('notes_api_key');
+                    try {
+                        const res = await fetch(`/api/notes/${id}/toggle-pin`, {
+                            method: 'POST',
+                            headers: { 'X-API-Key': apiKey }
+                        });
+                        if (res.ok) {
+                            this.fetchNotes();
+                        } else if (res.status === 403 || res.status === 401) {
+                            this.logout();
+                        }
+                    } catch (e) {
+                        console.error('Error toggling pin:', e);
+                    }
+                },
+                renderMarkdown(content) {
+                    if (!content) return '';
+                    return marked.parse(content);
+                },
+                formatDate(dateStr) {
+                    const date = new Date(dateStr);
+                    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+                }
+            }
+        }
+    </script>
+</body>
+</html>
